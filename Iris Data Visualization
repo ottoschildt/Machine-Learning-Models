@@ -1,0 +1,28 @@
+# KONEOPPIMIMISEN PERUSTEET s18 Demo 1 Tehtävä 3 
+
+import matplotlib.pyplot as plt
+from sklearn import datasets
+
+# import Iris data for plotting
+iris = datasets.load_iris()
+X = iris.data[:, :4]  # take the input features into the data matrix
+t = iris.target # take the class labels into the target vector
+
+plt.figure(1, figsize=(10, 10))
+plt.clf()
+
+# Plot the Iris data
+for i in range(1,5):
+    for j in range(1,5):
+        plt.subplot(4,4,(i-1)*4+j)
+        plt.scatter(X[:, i-1], X[:, j-1], c=t)
+        if i == 4:
+            plt.x plt.xlim(x_min, x_max)
+        plt.ylim(y_min, y_max) label(iris.feature_names[j-1])
+        if j == 1:
+            plt.ylabel(iris.feature_names[i-1])
+
+        x_min, x_max = X[:, i-1].min() - .5, X[:, i-1].max() + .5
+        y_min, y_max = X[:, j-1].min() - .5, X[:, j-1].max() + .5
+
+       
