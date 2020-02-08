@@ -1,0 +1,156 @@
+# KONEOPPIMISEN PERUSTEET S18 Demo 1 Tehtävä 4
+
+# OPETUS- JA TESTIVIRHEEN VERTAILU
+
+#Testin datan generointi ja opetus ja testivirheen vertailu
+#Tehtävän suorittamiseksi tarvitaan seuraavat kirjastot
+
+from matplotlib.colors import ListedColormap
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets.samples_generator import make_blobs
+from sklearn.model_selection import train_test_split
+
+
+
+# sklearn.dataset kirjston make_blobs funktiolla voidaan generoida testidatoja klusterointi- ja 
+# luokittelumenetelmien testaamiseen (http://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html)
+
+# Generoi make_blobs alla annetuilla parametreilla kaksiulotteinen data, jossa kolme luokkaa ja jokaisessa
+# luokassa 20 datapistettä; Toistettavuuden vuoksi aseta random_state parametri arvoon 86.
+# n_samples=100, centers=3, n_features=2, center_box=(-5.0, 5.0), random_state=68
+X, y = make_blobs(n_samples=100, centers=3, n_features=2, center_box=(-5.0, 5.0), random_state=68)
+
+
+# Visualisoidaan generoitu data 
+plt.plot(X[y==0, 0], X[y==0, 1],'o')
+plt.plot(X[y==1, 0], X[y==1, 1],'x')
+plt.plot(X[y==2, 0], X[y==2, 1],'+')
+plt.show()
+plt.close()
+
+# Jaetaan data opetus ja testijoukkoon suhteessa 70% opetus/30% testi; asetetaan random_state = 42
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=42)
+
+# Opetetaan kNN-luokitin opetusdatalla ja tutkitaan testidatalla mikä olisi hyvä naapurien määrä
+
+# #############################################################################
+# Lasketaan opetus- ja testivirhe k-arvoille välillä 1:30
+
+model_params = np.arange(1,30,1)
+
+neigh = KNeighborsClassifier()
+train_accuracy = list()
+test_accuracy = list()
+for k in model_params:
+    neigh.set_params(n_neighbors=k) 
+    neigh.fit(X_train, y_train) 
+    train_accuracy.append(neigh.score(X_train, y_train))
+    test_accuracy.append(neigh.score(X_test, y_test))
+
+# Testidatalle parhaan luokittelutarkkuuden tuottava k:n arvo
+i_k_optim = np.argmax(test_accuracy)## Tästä saadaan suurin eli parhaan tarkkuudden k-arvo
+k_optim = model_params[i_k_optim]
+print("Optimal number of neighbors : %s" % k_optim)    
+
+# Huonoimman testivirheen tuottava k:n arvo
+i_k_worst = np.argmin(test_accuracy)## Tästä saadaan pienin eli alimman tarkkuudden k-arvo
+k_worst = model_params[i_k_worst]
+print("Worst number of neighbors : %s" % k_worst)    
+
+# Tulostetaan opetus- ja testivirheet eri k:n arvoilla
+plt.figure(1, figsize=(7, 7))
+plt.plot(model_params, train_accuracy, label='Train')
+plt.plot(model_params, test_accuracy, label='Test')
+plt.vlines(k_optim, plt.ylim()[0], np.max(test_accuracy), color='k',
+           linewidth=3, label='Optimum on test')
+plt.vlines(k_worst, plt.ylim()[0], np.min(test_accuracy), color='r',
+           linewidth=3, label='Worst on test')
+plt.legend(loc='upper right')
+plt.legend(loc=7)
+plt.tight_layout()
+#plt.ylim([0, 1.2])
+plt.xlabel('Number of nearest neighbors')
+plt.ylabel('Accuracy')
+plt.show()
+
+#######################################################################
+# Plotataan parhaan ja huonoimman mallin luokitusrajat ja opetus- ja testidata
+# Tätä varten meidän tarvitsee luoda 2D-hila jotta voimme laskea kNN-luokittimen 
+# palauttaman luokan erikohdissa syötemuuttujien avaruutta
+
+h = .02  # Plottauksen ruudukon askelpituus
+# Luodaan värikartat
+cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+cmap_bold = ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
+x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+# Luodaan 2D-hila/ruudukko xx,yy jonka pisteissä luokittimen arvo lasketaan (saadaan värjätyt alueet 
+# alla plotattavaan sirontakuvioon)
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+
+#----------------------------------------------------------------------#
+# Opetetaan malli uudestaan parhaalla K:n arvolla, lasketaan 
+# hilapisteille luokat ja plotataan tulos
+neigh.set_params(n_neighbors=k_optim)
+neigh.fit(X_train, y_train) 
+Z = neigh.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+# Luodaan figure tulosten kuvaajien piirtämistä varten
+plt.figure()
+
+# Piirrä hilapisteet ja niiden luokat
+plt.subplot(121)
+plt.pcolormesh(xx, yy, Z, cmap=cmap_light)
+
+# Piirretään myös make_blobsilla generoidut opetusdatapisteet
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cmap_bold, edgecolor='k', s=20)
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.title("k-NN best - Train data")
+
+# Piirretään subplotin avulla toiseen kuvaan testidatapisteet ja luokat
+plt.subplot(122)
+plt.pcolormesh(xx, yy, Z, cmap=cmap_light)
+
+# Plotataan myös testidatapisteet todellisten luokkien kanssa
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cmap_bold, edgecolor='k', s=20)
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.title("k-NN best - Test data")
+
+
+#----------------------------------------------------------------------#
+# Opetetaan malli uudestaan huonoimmalla K:n arvolla, lasketaan 
+# hilapisteille luokat ja plotataan tulos
+
+neigh.set_params(n_neighbors=k_worst)
+neigh.fit(X_train, y_train) 
+Z = neigh.predict(np.c_[xx.ravel(), yy.ravel()]) 
+Z = Z.reshape(xx.shape)
+
+# Luodaan figure tulosten kuvaajien piirtämistä varten
+plt.figure()
+
+# Piirretään hilapisteet ja niiden luokat
+plt.subplot(121)
+plt.pcolormesh(xx, yy, Z, cmap=cmap_light)
+
+# Piirretään myös make_blobsilla generoidut opetusdatapisteet
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cmap_bold, edgecolor='k', s=20)
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.title("k-NN worst - Train data")
+
+# Piirretään subplotin avulla toiseen kuvaan testidatapisteet ja luokat
+plt.subplot(122)
+plt.pcolormesh(xx, yy, Z, cmap=cmap_light)
+
+# Piirretään myös make_blobsilla generoidut testidatapisteet
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cmap_bold, edgecolor='k', s=20)
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.title("k-NN worst - Test data")
